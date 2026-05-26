@@ -1,0 +1,19 @@
+# Binaries
+/streaming-titles-aggregator
+*.exe
+*.test
+*.out
+
+# Dependency directories
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+
+# Config
+*.json
