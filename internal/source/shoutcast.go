@@ -21,7 +21,7 @@ func (shoutcast) Fetch(ctx context.Context, cfg config.StreamConfig) (string, er
 	var resp struct {
 		SongTitle string `json:"songtitle"`
 	}
-	if err := fetchJSON(ctx, url, &resp); err != nil {
+	if err := fetchJSON(ctx, url, cfg.UserAgent, &resp); err != nil {
 		return "", fmt.Errorf("shoutcast: %w", err)
 	}
 

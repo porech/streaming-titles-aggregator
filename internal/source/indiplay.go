@@ -39,7 +39,7 @@ func (indiplay) Fetch(ctx context.Context, cfg config.StreamConfig) (string, err
 	var resp struct {
 		StreamTitle string `json:"streamTitle"`
 	}
-	if err := fetchJSON(ctx, fullURL, &resp); err != nil {
+	if err := fetchJSON(ctx, fullURL, cfg.UserAgent, &resp); err != nil {
 		return "", fmt.Errorf("indiplay: %w", err)
 	}
 

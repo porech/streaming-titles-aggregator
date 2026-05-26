@@ -37,7 +37,7 @@ func (icecast) Fetch(ctx context.Context, cfg config.StreamConfig) (string, erro
 	u += "status-json.xsl"
 
 	var raw icecastResponse
-	if err := fetchJSON(ctx, u, &raw); err != nil {
+	if err := fetchJSON(ctx, u, cfg.UserAgent, &raw); err != nil {
 		return "", fmt.Errorf("icecast: %w", err)
 	}
 

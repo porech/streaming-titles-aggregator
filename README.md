@@ -15,34 +15,39 @@ Create a `streams.json` file:
 
 ```json
 {
-    "example_shoutcast": {
-        "kind": "shoutcast",
-        "base_url": "http://shoutcast.example.com:7239",
-        "sid": 1
-    },
-    "example_icecast": {
-        "kind": "icecast",
-        "base_url": "https://icecast.example.com",
-        "mount": "/stream.aac"
-    },
-    "example_indiplay_id": {
-        "kind": "indiplay",
-        "base_url": "https://indiplay.example.com",
-        "stream_id": "some-stream-id"
-    },
-    "example_indiplay_mount": {
-        "kind": "indiplay",
-        "base_url": "https://indiplay.example.com",
-        "mount": "/stream"
-    },
-    "example_indiplay_mount_port": {
-        "kind": "indiplay",
-        "base_url": "https://indiplay.example.com",
-        "mount": "/stream",
-        "port": 8083
+    "user_agent": "MyCustomAgent/1.0",
+    "streams": {
+        "example_shoutcast": {
+            "kind": "shoutcast",
+            "base_url": "http://shoutcast.example.com:7239",
+            "sid": 1
+        },
+        "example_icecast": {
+            "kind": "icecast",
+            "base_url": "https://icecast.example.com",
+            "mount": "/stream.aac"
+        },
+        "example_indiplay_id": {
+            "kind": "indiplay",
+            "base_url": "https://indiplay.example.com",
+            "stream_id": "some-stream-id"
+        },
+        "example_indiplay_mount": {
+            "kind": "indiplay",
+            "base_url": "https://indiplay.example.com",
+            "mount": "/stream"
+        },
+        "example_indiplay_mount_port": {
+            "kind": "indiplay",
+            "base_url": "https://indiplay.example.com",
+            "mount": "/stream",
+            "port": 8083
+        }
     }
 }
 ```
+
+The `user_agent` field at the top level is optional; if set it becomes the default for all streams. Each stream can override it with its own `user_agent` field. The final fallback is `streaming-titles-aggregator/1.0`. This is useful when a streaming server rejects Go's default User-Agent.
 
 ### Supported kinds
 
