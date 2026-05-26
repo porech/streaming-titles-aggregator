@@ -22,20 +22,28 @@ type StreamConfig struct {
 type Config map[string]StreamConfig
 
 type configFile struct {
-	UserAgent string                  `json:"user_agent"`
-	Streams   map[string]StreamConfig `json:"streams"`
+	ListenAddress string                  `json:"listen_address"`
+	UserAgent     string                  `json:"user_agent"`
+	Streams       map[string]StreamConfig `json:"streams"`
 }
 
-func LoadConfig(path string) (Config, error) {
+const defaultListenAddress = ":8080"
+
+func LoadConfig(path string) (Config, string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("config: %w", err)
+		return nil, "", fmt.Errorf("config: %w", err)
 	}
 	defer f.Close()
 
 	var raw configFile
 	if err := json.NewDecoder(f).Decode(&raw); err != nil {
-		return nil, fmt.Errorf("config: %w", err)
+		return nil, "", fmt.Errorf("config: %w", err)
+	}
+
+	addr := raw.ListenAddress
+	if addr == "" {
+		addr = defaultListenAddress
 	}
 
 	cfg := make(Config, len(raw.Streams))
@@ -48,12 +56,12 @@ func LoadConfig(path string) (Config, error) {
 		}
 
 		if err := sc.Validate(); err != nil {
-			return nil, fmt.Errorf("config %q: %w", name, err)
+			return nil, "", fmt.Errorf("config %q: %w", name, err)
 		}
 		cfg[name] = sc
 	}
 
-	return cfg, nil
+	return cfg, addr, nil
 }
 
 func (sc StreamConfig) Validate() error {

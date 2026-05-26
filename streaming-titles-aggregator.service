@@ -9,8 +9,7 @@ Type=simple
 User=porech
 WorkingDirectory=/opt/streaming-titles-aggregator
 ExecStart=/opt/streaming-titles-aggregator/streaming-titles-aggregator \
-    --config /opt/streaming-titles-aggregator/streams.json \
-    --addr :8080
+    /opt/streaming-titles-aggregator/config.json
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5

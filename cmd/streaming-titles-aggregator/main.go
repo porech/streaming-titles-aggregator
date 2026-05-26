@@ -1,19 +1,20 @@
 package main
 
 import (
-	"flag"
 	"log"
+	"os"
 
 	"github.com/porech/streaming-titles-aggregator/internal/server"
 	_ "github.com/porech/streaming-titles-aggregator/internal/source"
 )
 
 func main() {
-	addr := flag.String("addr", ":8080", "listen address")
-	configPath := flag.String("config", "streams.json", "path to configuration file")
-	flag.Parse()
+	configPath := "config.json"
+	if len(os.Args) > 1 {
+		configPath = os.Args[1]
+	}
 
-	if err := server.Run(*addr, *configPath); err != nil {
+	if err := server.Run(configPath); err != nil {
 		log.Fatal(err)
 	}
 }

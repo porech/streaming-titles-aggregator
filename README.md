@@ -11,10 +11,11 @@ Aggregates currently-playing song titles from multiple streaming sources (Shoutc
 
 ## Configuration
 
-Create a `streams.json` file:
+Create a `config.json` file:
 
 ```json
 {
+    "listen_address": ":8080",
     "user_agent": "MyCustomAgent/1.0",
     "streams": {
         "example_shoutcast": {
@@ -47,7 +48,10 @@ Create a `streams.json` file:
 }
 ```
 
-The `user_agent` field at the top level is optional; if set it becomes the default for all streams. Each stream can override it with its own `user_agent` field. The final fallback is `streaming-titles-aggregator/1.0`. This is useful when a streaming server rejects Go's default User-Agent.
+The top-level fields are all optional:
+
+- `listen_address` – default `:8080`
+- `user_agent` – default `streaming-titles-aggregator/1.0`; each stream can override it with its own `user_agent` field
 
 ### Supported kinds
 
@@ -61,19 +65,19 @@ The `user_agent` field at the top level is optional; if set it becomes the defau
 ## Usage
 
 ```
-streaming-titles-aggregator [flags]
+streaming-titles-aggregator [config.json]
 ```
 
-| Flag | Default | Description |
-|---|---|---|
-| `--config` | `streams.json` | Path to configuration file |
-| `--addr` | `:8080` | Listen address |
+The only argument is an optional path to the configuration file. Defaults to `config.json` in the current directory.
 
 ### Examples
 
 ```sh
-# Start the server
-streaming-titles-aggregator --config /etc/sta/streams.json --addr :8080
+# Start the server with the default config.json
+streaming-titles-aggregator
+
+# Specify a different config file
+streaming-titles-aggregator /etc/sta/config.json
 
 # Fetch the current title for a stream
 curl http://localhost:8080/title/example_shoutcast.json

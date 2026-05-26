@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -15,55 +16,83 @@ import (
 )
 
 type reloadableConfig struct {
-	mu   sync.RWMutex
+	sync.RWMutex
 	cfg  config.Config
 	path string
 }
 
-func (rc *reloadableConfig) get(name string) (config.StreamConfig, bool) {
-	rc.mu.RLock()
-	defer rc.mu.RUnlock()
-	sc, ok := rc.cfg[name]
-	return sc, ok
+type Server struct {
+	rc   *reloadableConfig
+	addr string
+	srv  *http.Server
+	srvMu sync.Mutex
 }
 
-func (rc *reloadableConfig) reload() error {
-	cfg, err := config.LoadConfig(rc.path)
-	if err != nil {
-		return err
-	}
-	rc.mu.Lock()
-	defer rc.mu.Unlock()
-	rc.cfg = cfg
-	return nil
-}
-
-func Run(addr, configPath string) error {
-	cfg, err := config.LoadConfig(configPath)
+func Run(configPath string) error {
+	cfg, addr, err := config.LoadConfig(configPath)
 	if err != nil {
 		return err
 	}
 
-	rc := &reloadableConfig{cfg: cfg, path: configPath}
+	s := &Server{
+		rc:   &reloadableConfig{cfg: cfg, path: configPath},
+		addr: addr,
+	}
+
+	go s.serve()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGHUP)
-	go func() {
-		for range sig {
-			log.Println("reloading config...")
-			if err := rc.reload(); err != nil {
-				log.Printf("reload failed: %v", err)
-			} else {
-				log.Println("config reloaded")
-			}
+	for range sig {
+		s.reload()
+	}
+
+	return nil
+}
+
+func (s *Server) serve() {
+	for {
+		s.srvMu.Lock()
+		addr := s.addr
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /title/", handleTitle(s.rc))
+		srv := &http.Server{Addr: addr, Handler: mux}
+		s.srv = srv
+		s.srvMu.Unlock()
+
+		log.Printf("listening on %s", addr)
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
 		}
-	}()
+	}
+}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /title/", handleTitle(rc))
+func (s *Server) reload() {
+	cfg, addr, err := config.LoadConfig(s.rc.path)
+	if err != nil {
+		log.Printf("reload failed: %v", err)
+		return
+	}
 
-	log.Printf("listening on %s", addr)
-	return http.ListenAndServe(addr, mux)
+	s.rc.Lock()
+	s.rc.cfg = cfg
+	s.rc.Unlock()
+
+	s.srvMu.Lock()
+	oldAddr := s.addr
+	s.addr = addr
+	srv := s.srv
+	s.srvMu.Unlock()
+
+	if addr == oldAddr {
+		log.Println("config reloaded")
+		return
+	}
+
+	log.Printf("address changed from %s to %s, restarting...", oldAddr, addr)
+	if srv != nil {
+		go srv.Shutdown(context.Background())
+	}
 }
 
 func handleTitle(rc *reloadableConfig) http.HandlerFunc {
@@ -74,7 +103,9 @@ func handleTitle(rc *reloadableConfig) http.HandlerFunc {
 			return
 		}
 
-		sc, ok := rc.get(name)
+		rc.RLock()
+		sc, ok := rc.cfg[name]
+		rc.RUnlock()
 		if !ok {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "stream not found: " + name})
 			return
