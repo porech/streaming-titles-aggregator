@@ -10,11 +10,12 @@ const defaultUserAgent = "streaming-titles-aggregator/1.0"
 
 type StreamConfig struct {
 	Kind      string `json:"kind"`
-	BaseURL   string `json:"base_url"`
+	BaseURL   string `json:"base_url,omitempty"`
 	SID       *int   `json:"sid,omitempty"`
 	Mount     string `json:"mount,omitempty"`
 	Port      *int   `json:"port,omitempty"`
 	StreamID  string `json:"stream_id,omitempty"`
+	StreamURL string `json:"stream_url,omitempty"`
 	UserAgent string `json:"user_agent,omitempty"`
 }
 
@@ -59,9 +60,18 @@ func (sc StreamConfig) Validate() error {
 	if sc.Kind == "" {
 		return fmt.Errorf("kind is required")
 	}
-	if sc.BaseURL == "" {
-		return fmt.Errorf("base_url is required")
+
+	switch sc.Kind {
+	case "icy":
+		if sc.StreamURL == "" {
+			return fmt.Errorf("stream_url is required for kind %q", sc.Kind)
+		}
+	default:
+		if sc.BaseURL == "" {
+			return fmt.Errorf("base_url is required for kind %q", sc.Kind)
+		}
 	}
+
 	switch sc.Kind {
 	case "shoutcast":
 		if sc.SID == nil {
@@ -75,6 +85,8 @@ func (sc StreamConfig) Validate() error {
 		if sc.StreamID == "" && sc.Mount == "" {
 			return fmt.Errorf("stream_id or mount is required for kind %q", sc.Kind)
 		}
+	case "icy":
+		// url already validated above
 	default:
 		return fmt.Errorf("unknown kind: %q", sc.Kind)
 	}
