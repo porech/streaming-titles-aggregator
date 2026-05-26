@@ -52,7 +52,7 @@ The `user_agent` field at the top level is optional; if set it becomes the defau
 ### Supported kinds
 
 | Kind | Required fields | Optional fields | Notes |
-|---|---|---|---|---|
+|---|---|---|---|
 | `shoutcast` | `base_url`, `sid` | — | Queries `/stats?sid=N&json=1` |
 | `icecast` | `base_url`, `mount` | — | Queries `/status-json.xsl`; the mount is matched against the `listenurl` of each source in the response |
 | `indiplay` | `base_url`, plus **one of** `stream_id` or `mount` | `port` | If `stream_id` is set it is used (and `mount`/`port` are ignored). Otherwise queries `/metadata/title?mount=...&port=...`, omitting `port` when not set |
