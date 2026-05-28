@@ -337,3 +337,60 @@ func TestCORS_PreflightFromRejectedOriginFallsThrough(t *testing.T) {
 		}
 	}
 }
+
+func TestCORS_IntegratesWithMuxPreflight(t *testing.T) {
+	cfg := &config.CORSConfig{
+		AllowedOrigins: []string{"https://a"},
+		AllowedMethods: []string{"GET", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type"},
+		MaxAge:         60,
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /title/", func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("preflight must not reach the title handler")
+	})
+	h := corsMiddleware(staticCORS(cfg), mux)
+
+	req := httptest.NewRequest(http.MethodOptions, "/title/anything.json", nil)
+	req.Header.Set("Origin", "https://a")
+	req.Header.Set("Access-Control-Request-Method", "GET")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Methods"); got == "" {
+		t.Error("expected Allow-Methods to be set on preflight")
+	}
+}
+
+func TestCORS_IntegratesWithMuxNormalGet(t *testing.T) {
+	cfg := &config.CORSConfig{
+		AllowedOrigins: []string{"https://a"},
+		AllowedMethods: []string{"GET", "OPTIONS"},
+	}
+	mux := http.NewServeMux()
+	reached := false
+	mux.HandleFunc("GET /title/", func(w http.ResponseWriter, r *http.Request) {
+		reached = true
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"title":"ok"}`))
+	})
+	h := corsMiddleware(staticCORS(cfg), mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/title/anything.json", nil)
+	req.Header.Set("Origin", "https://a")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if !reached {
+		t.Fatal("normal GET should reach the mux handler")
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://a" {
+		t.Errorf("Allow-Origin = %q, want https://a", got)
+	}
+}
