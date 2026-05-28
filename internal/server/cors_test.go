@@ -271,3 +271,69 @@ func TestCORS_ExposeHeaders(t *testing.T) {
 		t.Errorf("Expose-Headers = %q, want %q", got, "X-Foo, X-Bar")
 	}
 }
+
+func TestCORS_RejectedOriginNoExtraHeaders(t *testing.T) {
+	cfg := &config.CORSConfig{
+		AllowedOrigins:   []string{"https://a"},
+		AllowedMethods:   []string{"GET", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type"},
+		ExposedHeaders:   []string{"X-Foo"},
+		AllowCredentials: true,
+		MaxAge:           3600,
+	}
+	next, called := nextOK()
+	h := corsMiddleware(staticCORS(cfg), next)
+
+	req := httptest.NewRequest(http.MethodGet, "/title/x.json", nil)
+	req.Header.Set("Origin", "https://evil")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if !*called {
+		t.Fatal("next should be called for rejected origin")
+	}
+	for _, k := range []string{
+		"Access-Control-Allow-Origin",
+		"Access-Control-Allow-Credentials",
+		"Access-Control-Expose-Headers",
+		"Access-Control-Allow-Methods",
+		"Access-Control-Allow-Headers",
+		"Access-Control-Max-Age",
+		"Vary",
+	} {
+		if v := rec.Header().Get(k); v != "" {
+			t.Errorf("rejected origin: expected no %s header, got %q", k, v)
+		}
+	}
+}
+
+func TestCORS_PreflightFromRejectedOriginFallsThrough(t *testing.T) {
+	cfg := &config.CORSConfig{
+		AllowedOrigins: []string{"https://a"},
+		AllowedMethods: []string{"GET", "OPTIONS"},
+		AllowedHeaders: []string{"Content-Type"},
+		MaxAge:         3600,
+	}
+	next, called := nextOK()
+	h := corsMiddleware(staticCORS(cfg), next)
+
+	req := httptest.NewRequest(http.MethodOptions, "/title/x.json", nil)
+	req.Header.Set("Origin", "https://evil")
+	req.Header.Set("Access-Control-Request-Method", "GET")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if !*called {
+		t.Fatal("preflight from rejected origin must fall through to next, not 204")
+	}
+	for _, k := range []string{
+		"Access-Control-Allow-Origin",
+		"Access-Control-Allow-Methods",
+		"Access-Control-Allow-Headers",
+		"Access-Control-Max-Age",
+	} {
+		if v := rec.Header().Get(k); v != "" {
+			t.Errorf("rejected preflight: expected no %s header, got %q", k, v)
+		}
+	}
+}

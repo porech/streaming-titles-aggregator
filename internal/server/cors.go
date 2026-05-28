@@ -18,16 +18,17 @@ func corsMiddleware(get func() *config.CORSConfig, next http.Handler) http.Handl
 		}
 
 		origin := r.Header.Get("Origin")
-		h := w.Header()
-
 		allowOrigin, addVary := resolveAllowOrigin(cfg, origin)
-		if allowOrigin != "" {
-			h.Set("Access-Control-Allow-Origin", allowOrigin)
+		if allowOrigin == "" {
+			next.ServeHTTP(w, r)
+			return
 		}
+
+		h := w.Header()
+		h.Set("Access-Control-Allow-Origin", allowOrigin)
 		if addVary {
 			h.Add("Vary", "Origin")
 		}
-
 		if cfg.AllowCredentials {
 			h.Set("Access-Control-Allow-Credentials", "true")
 		}
