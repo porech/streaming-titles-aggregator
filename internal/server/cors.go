@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -66,10 +67,8 @@ func resolveAllowOrigin(cfg *config.CORSConfig, origin string) (value string, va
 	if origin == "" {
 		return "", false
 	}
-	for _, o := range cfg.AllowedOrigins {
-		if o == origin {
-			return origin, true
-		}
+	if slices.Contains(cfg.AllowedOrigins, origin) {
+		return origin, true
 	}
 	return "", false
 }
