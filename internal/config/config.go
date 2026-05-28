@@ -71,6 +71,18 @@ func LoadConfig(path string) (Config, string, *CORSConfig, error) {
 		cfg[name] = sc
 	}
 
+	if raw.CORS != nil {
+		if len(raw.CORS.AllowedOrigins) == 0 {
+			return nil, "", nil, fmt.Errorf("config: cors: allowed_origins is required")
+		}
+		if raw.CORS.MaxAge < 0 {
+			return nil, "", nil, fmt.Errorf("config: cors: max_age must be >= 0")
+		}
+		if len(raw.CORS.AllowedMethods) == 0 {
+			raw.CORS.AllowedMethods = []string{"GET", "OPTIONS"}
+		}
+	}
+
 	return cfg, addr, raw.CORS, nil
 }
 
