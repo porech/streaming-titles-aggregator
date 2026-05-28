@@ -21,24 +21,34 @@ type StreamConfig struct {
 
 type Config map[string]StreamConfig
 
+type CORSConfig struct {
+	AllowedOrigins   []string `json:"allowed_origins,omitempty"`
+	AllowedMethods   []string `json:"allowed_methods,omitempty"`
+	AllowedHeaders   []string `json:"allowed_headers,omitempty"`
+	ExposedHeaders   []string `json:"exposed_headers,omitempty"`
+	AllowCredentials bool     `json:"allow_credentials,omitempty"`
+	MaxAge           int      `json:"max_age,omitempty"`
+}
+
 type configFile struct {
 	ListenAddress string                  `json:"listen_address"`
 	UserAgent     string                  `json:"user_agent"`
+	CORS          *CORSConfig             `json:"cors,omitempty"`
 	Streams       map[string]StreamConfig `json:"streams"`
 }
 
 const defaultListenAddress = ":8080"
 
-func LoadConfig(path string) (Config, string, error) {
+func LoadConfig(path string) (Config, string, *CORSConfig, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, "", fmt.Errorf("config: %w", err)
+		return nil, "", nil, fmt.Errorf("config: %w", err)
 	}
 	defer f.Close()
 
 	var raw configFile
 	if err := json.NewDecoder(f).Decode(&raw); err != nil {
-		return nil, "", fmt.Errorf("config: %w", err)
+		return nil, "", nil, fmt.Errorf("config: %w", err)
 	}
 
 	addr := raw.ListenAddress
@@ -56,12 +66,24 @@ func LoadConfig(path string) (Config, string, error) {
 		}
 
 		if err := sc.Validate(); err != nil {
-			return nil, "", fmt.Errorf("config %q: %w", name, err)
+			return nil, "", nil, fmt.Errorf("config %q: %w", name, err)
 		}
 		cfg[name] = sc
 	}
 
-	return cfg, addr, nil
+	if raw.CORS != nil {
+		if len(raw.CORS.AllowedOrigins) == 0 {
+			return nil, "", nil, fmt.Errorf("config: cors: allowed_origins is required")
+		}
+		if raw.CORS.MaxAge < 0 {
+			return nil, "", nil, fmt.Errorf("config: cors: max_age must be >= 0")
+		}
+		if len(raw.CORS.AllowedMethods) == 0 {
+			raw.CORS.AllowedMethods = []string{"GET", "OPTIONS"}
+		}
+	}
+
+	return cfg, addr, raw.CORS, nil
 }
 
 func (sc StreamConfig) Validate() error {

@@ -17,6 +17,14 @@ Create a `config.json` file:
 {
     "listen_address": ":8080",
     "user_agent": "MyCustomAgent/1.0",
+    "cors": {
+        "allowed_origins": ["https://example.com"],
+        "allowed_methods": ["GET", "OPTIONS"],
+        "allowed_headers": ["Content-Type"],
+        "exposed_headers": [],
+        "allow_credentials": false,
+        "max_age": 3600
+    },
     "streams": {
         "example_shoutcast": {
             "kind": "shoutcast",
@@ -52,6 +60,24 @@ The top-level fields are all optional:
 
 - `listen_address` – default `:8080`
 - `user_agent` – default `streaming-titles-aggregator/1.0`; each stream can override it with its own `user_agent` field
+- `cors` – disabled by default (no CORS headers emitted). See the **CORS** section below.
+
+### CORS
+
+If a top-level `cors` object is present, the server emits CORS headers on responses and handles `OPTIONS` preflight requests. If the section is absent, no CORS handling occurs (default).
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `allowed_origins` | string array | — (required if `cors` is set) | Use `["*"]` for a wildcard, or list explicit origins (`["https://a", "https://b"]`). Matched as exact strings. |
+| `allowed_methods` | string array | `["GET", "OPTIONS"]` | Sent in `Access-Control-Allow-Methods` on preflight. |
+| `allowed_headers` | string array | — | Sent in `Access-Control-Allow-Headers` on preflight if non-empty. |
+| `exposed_headers` | string array | — | Sent in `Access-Control-Expose-Headers` on normal responses if non-empty. |
+| `allow_credentials` | bool | `false` | Sends `Access-Control-Allow-Credentials: true` when `true`. With `allowed_origins: ["*"]`, the server echoes the request `Origin` (since `*` + credentials is invalid per spec). |
+| `max_age` | int (seconds) | `0` (header omitted) | Sent in `Access-Control-Max-Age` on preflight when greater than zero. Must be `>= 0`. |
+
+When the request's `Origin` does not match any entry in `allowed_origins` (and the list is not `["*"]`), no CORS headers are emitted — the browser enforces the policy.
+
+Changes to the `cors` section are picked up by `SIGHUP` reload without restarting the listener.
 
 ### Supported kinds
 
