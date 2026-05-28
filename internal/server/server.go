@@ -29,7 +29,7 @@ type Server struct {
 }
 
 func Run(configPath string) error {
-	cfg, addr, err := config.LoadConfig(configPath)
+	cfg, addr, _, err := config.LoadConfig(configPath)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (s *Server) serve() {
 }
 
 func (s *Server) reload() {
-	cfg, addr, err := config.LoadConfig(s.rc.path)
+	cfg, addr, _, err := config.LoadConfig(s.rc.path)
 	if err != nil {
 		log.Printf("reload failed: %v", err)
 		return
