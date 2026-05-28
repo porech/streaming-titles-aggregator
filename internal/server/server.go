@@ -18,7 +18,14 @@ import (
 type reloadableConfig struct {
 	sync.RWMutex
 	cfg  config.Config
+	cors *config.CORSConfig
 	path string
+}
+
+func (rc *reloadableConfig) snapshotCORS() *config.CORSConfig {
+	rc.RLock()
+	defer rc.RUnlock()
+	return rc.cors
 }
 
 type Server struct {
@@ -29,13 +36,13 @@ type Server struct {
 }
 
 func Run(configPath string) error {
-	cfg, addr, _, err := config.LoadConfig(configPath)
+	cfg, addr, cors, err := config.LoadConfig(configPath)
 	if err != nil {
 		return err
 	}
 
 	s := &Server{
-		rc:   &reloadableConfig{cfg: cfg, path: configPath},
+		rc:   &reloadableConfig{cfg: cfg, cors: cors, path: configPath},
 		addr: addr,
 	}
 
@@ -56,7 +63,8 @@ func (s *Server) serve() {
 		addr := s.addr
 		mux := http.NewServeMux()
 		mux.HandleFunc("GET /title/", handleTitle(s.rc))
-		srv := &http.Server{Addr: addr, Handler: mux}
+		handler := corsMiddleware(s.rc.snapshotCORS, mux)
+		srv := &http.Server{Addr: addr, Handler: handler}
 		s.srv = srv
 		s.srvMu.Unlock()
 
@@ -68,7 +76,7 @@ func (s *Server) serve() {
 }
 
 func (s *Server) reload() {
-	cfg, addr, _, err := config.LoadConfig(s.rc.path)
+	cfg, addr, cors, err := config.LoadConfig(s.rc.path)
 	if err != nil {
 		log.Printf("reload failed: %v", err)
 		return
@@ -76,6 +84,7 @@ func (s *Server) reload() {
 
 	s.rc.Lock()
 	s.rc.cfg = cfg
+	s.rc.cors = cors
 	s.rc.Unlock()
 
 	s.srvMu.Lock()
